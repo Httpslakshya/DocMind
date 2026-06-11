@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="DocMind document details." />
+  <title>DocMind | Document Details</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=line-clamp"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { ink:'#1c1b1b', paper:'#fcf9f8', card:'#fff', yellow:'#ffd60a', yellowSoft:'#ffe171', purple:'#645efb', muted:'#4d4632', danger:'#ba1a1a', dangerSoft:'#ffdad6', soft:'#f0edec' },
+          fontFamily: { display:['Space Grotesk','sans-serif'], body:['Space Grotesk','sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Space Grotesk', sans-serif; }
+    .shadow-brutal { box-shadow: 10px 10px 0 #1c1b1b; }
+    .shadow-sm-brutal { box-shadow: 4px 4px 0 #1c1b1b; }
+    .press { transition: transform .16s ease, box-shadow .16s ease, background .16s ease; }
+    .press:hover { transform: translate(-3px, -3px); box-shadow: 13px 13px 0 #1c1b1b; }
+    .press:active { transform: translate(4px, 4px); box-shadow: 4px 4px 0 #1c1b1b; }
+  </style>
+</head>
+<body class="bg-paper text-ink min-h-screen selection:bg-yellow selection:text-ink">
+  <header class="bg-card border-b-4 border-ink px-4 sm:px-6 py-4">
+    <div class="max-w-6xl mx-auto flex items-center justify-between gap-4">
+      <a href="/dashboard" class="flex items-center gap-3 font-black">
+        <span class="h-11 w-11 rounded-full border-4 border-ink bg-yellow grid place-items-center shadow-sm-brutal material-symbols-outlined">arrow_back</span>
+        <span class="hidden sm:inline">Back to Library</span>
+      </a>
+      <div class="flex items-center gap-3">
+        <div class="h-11 w-11 rounded-full border-4 border-ink bg-yellow overflow-hidden shadow-sm-brutal"><img src="/static/docmind-logo.png" alt="DocMind logo" class="h-full w-full object-cover" /></div>
+        <strong class="text-2xl font-black">DocMind</strong>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 py-7">
+    <section id="content" class="grid gap-6">
+      <div class="border-4 border-ink bg-card shadow-brutal p-6 font-black">Loading document details...</div>
+    </section>
+  </main>
+
+  <div id="toast" class="hidden fixed bottom-5 right-5 z-50 max-w-sm bg-card border-4 border-ink shadow-brutal p-4 font-black"></div>
+
+  <script type="module" src="/src/document.js"></script>
+</body>
+</html>

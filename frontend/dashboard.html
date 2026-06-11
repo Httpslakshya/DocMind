@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="DocMind document dashboard." />
+  <title>DocMind | Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,line-clamp"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { ink:'#1c1b1b', paper:'#fcf9f8', card:'#fff', yellow:'#ffd60a', yellowSoft:'#ffe171', purple:'#645efb', purpleDark:'#4b41e1', muted:'#4d4632', danger:'#ba1a1a', dangerSoft:'#ffdad6', soft:'#f0edec' },
+          fontFamily: { display:['Space Grotesk','sans-serif'], body:['Space Grotesk','sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Space Grotesk', sans-serif; }
+    ::-webkit-scrollbar { width: 12px; height: 12px; }
+    ::-webkit-scrollbar-track { background: #fcf9f8; border-left: 4px solid #1c1b1b; }
+    ::-webkit-scrollbar-thumb { background: #ffd60a; border: 3px solid #1c1b1b; }
+    .shadow-brutal { box-shadow: 8px 8px 0 #1c1b1b; }
+    .shadow-sm-brutal { box-shadow: 4px 4px 0 #1c1b1b; }
+    .press { transition: transform .16s ease, box-shadow .16s ease, background .16s ease; }
+    .press:hover { transform: translate(-3px, -3px); box-shadow: 11px 11px 0 #1c1b1b; }
+    .press:active { transform: translate(4px, 4px); box-shadow: 3px 3px 0 #1c1b1b; }
+    .card-reveal { animation: reveal .28s ease both; }
+    @keyframes reveal { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body class="bg-paper text-ink min-h-screen overflow-x-hidden selection:bg-yellow selection:text-ink">
+  <div class="min-h-screen md:grid md:grid-cols-[280px_1fr]">
+    <aside id="sidebar" class="fixed md:sticky top-0 left-0 z-40 h-screen w-[280px] -translate-x-full md:translate-x-0 transition-transform bg-card border-r-4 border-ink p-4 flex flex-col gap-5">
+      <div class="flex items-center gap-3 border-b-4 border-ink pb-4">
+        <div class="h-14 w-14 rounded-full border-4 border-ink bg-yellow overflow-hidden shadow-sm-brutal shrink-0">
+          <img src="/static/docmind-logo.png" alt="DocMind logo" class="h-full w-full object-cover" />
+        </div>
+        <div>
+          <h1 class="text-3xl font-black leading-none">DocMind</h1>
+          <p class="text-xs font-bold text-muted">Cited PDF intelligence</p>
+        </div>
+      </div>
+      <nav class="flex-1 space-y-3">
+        <a href="/dashboard" class="flex items-center gap-3 bg-yellow border-4 border-ink shadow-sm-brutal p-3 font-black"><span class="material-symbols-outlined">library_books</span>Library</a>
+        <button id="new-chat-btn" class="w-full flex items-center gap-3 border-4 border-transparent hover:border-ink hover:bg-soft p-3 font-black text-left transition"><span class="material-symbols-outlined">add_box</span>New Chat</button>
+        <button id="view-all-nav" class="w-full flex items-center gap-3 border-4 border-transparent hover:border-ink hover:bg-soft p-3 font-black text-left transition"><span class="material-symbols-outlined">view_list</span>View All Documents</button>
+      </nav>
+      <div class="border-t-4 border-ink pt-4 space-y-3">
+        <button id="upgrade-btn" class="press shadow-brutal w-full bg-purple text-white border-4 border-ink p-3 font-black flex items-center justify-center gap-2"><span class="material-symbols-outlined">bolt</span>Upgrade</button>
+        <button id="settings-btn" class="w-full flex items-center gap-3 border-4 border-transparent hover:border-ink hover:bg-soft p-3 font-black text-left"><span class="material-symbols-outlined">settings</span>Settings</button>
+        <button id="logout-btn" class="w-full flex items-center gap-3 border-4 border-transparent hover:border-ink hover:bg-dangerSoft p-3 font-black text-left"><span class="material-symbols-outlined">logout</span>Logout</button>
+      </div>
+    </aside>
+
+    <main class="min-h-screen">
+      <header class="sticky top-0 z-30 bg-card/95 backdrop-blur border-b-4 border-ink px-4 sm:px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <button id="menu-btn" class="md:hidden border-4 border-ink bg-yellow shadow-sm-brutal h-11 w-11 grid place-items-center"><span class="material-symbols-outlined">menu</span></button>
+          <div>
+            <p class="text-xs font-black uppercase tracking-[.18em] text-muted">Workspace</p>
+            <h2 class="text-2xl sm:text-3xl font-black leading-none">DocMind Library</h2>
+          </div>
+        </div>
+      </header>
+
+      <section class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <div class="grid xl:grid-cols-[1fr_360px] gap-6 items-start">
+          <div>
+            <div class="mb-6 bg-yellow border-4 border-ink shadow-brutal p-5 sm:p-7">
+              <p class="text-xs font-black uppercase tracking-[.18em] text-muted">Good to see you</p>
+              <h1 id="user-greeting" class="text-4xl sm:text-5xl font-black tracking-tight">Good Morning, Guest</h1>
+              <p class="mt-2 max-w-2xl font-semibold text-muted">Ready to extract knowledge from your documents today? Drop a PDF below or pick up where you left off.</p>
+            </div>
+
+            <section id="upload-card" class="mb-7 relative group">
+              <div class="absolute inset-0 translate-x-2 translate-y-2 bg-ink"></div>
+              <div id="drop-zone" class="relative bg-card border-4 border-dashed border-ink p-6 sm:p-8 min-h-[190px] flex flex-col items-center justify-center text-center transition group-hover:bg-yellowSoft cursor-pointer">
+                <div class="h-20 w-20 rounded-full border-4 border-ink bg-yellow grid place-items-center shadow-sm-brutal mb-4 transition group-hover:scale-105">
+                  <span class="material-symbols-outlined text-4xl">upload_file</span>
+                </div>
+                <h3 class="text-2xl sm:text-3xl font-black">Drop your PDF here</h3>
+                <p class="font-semibold text-muted mt-1">or click this single upload area to browse your computer</p>
+                <p id="upload-feedback" class="mt-4 hidden border-4 border-ink bg-soft px-4 py-2 font-bold"></p>
+                <input id="file-upload" type="file" accept=".pdf" class="hidden" />
+              </div>
+            </section>
+
+            <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b-4 border-ink pb-3 mb-5">
+              <div>
+                <h2 class="text-3xl font-black flex items-center gap-2"><span class="material-symbols-outlined">auto_awesome_mosaic</span><span id="section-title">Recent Documents</span></h2>
+                <p id="doc-count" class="font-bold text-muted">Loading your library...</p>
+              </div>
+              <div class="flex gap-2">
+                <button id="view-all-btn" class="border-4 border-ink bg-card px-4 py-2 font-black hover:bg-yellow transition">View All</button>
+                <button id="refresh-btn" class="border-4 border-ink bg-card px-4 py-2 font-black hover:bg-yellow transition"><span class="material-symbols-outlined align-middle">refresh</span></button>
+              </div>
+            </div>
+            <div id="documents-grid" class="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-5"></div>
+          </div>
+
+          <aside class="bg-card border-4 border-ink shadow-brutal p-5 sticky top-24">
+            <p class="text-xs font-black uppercase tracking-[.18em] text-muted">Quick actions</p>
+            <h3 class="text-2xl font-black mt-1">Study faster</h3>
+            <div class="mt-4 grid gap-3">
+              <button id="quick-summarize" data-action="Summarize Document" class="quick-action border-4 border-ink bg-yellow px-4 py-3 font-black text-left hover:-translate-y-1 transition">Summarize Document</button>
+              <button id="quick-notes" data-action="Generate Notes" class="quick-action border-4 border-ink bg-card px-4 py-3 font-black text-left hover:bg-yellowSoft transition">Generate Notes</button>
+              <button id="quick-quiz" data-action="Generate Quiz" class="quick-action border-4 border-ink bg-card px-4 py-3 font-black text-left hover:bg-yellowSoft transition">Generate Quiz</button>
+            </div>
+            <p class="mt-4 text-sm font-semibold text-muted">Pick a document first. These actions open chat with a specialized prompt already running.</p>
+          </aside>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="modal" class="hidden fixed inset-0 z-50 bg-ink/55 p-4 items-center justify-center">
+    <div class="bg-card border-4 border-ink shadow-brutal max-w-md w-full p-6">
+      <div class="flex justify-between gap-4 border-b-4 border-ink pb-3 mb-4">
+        <h3 id="modal-title" class="text-2xl font-black">Settings</h3>
+        <button id="modal-close" class="font-black text-2xl leading-none">&times;</button>
+      </div>
+      <div id="modal-body" class="font-semibold text-muted"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="hidden fixed bottom-5 right-5 z-50 max-w-sm bg-card border-4 border-ink shadow-brutal p-4 font-black"></div>
+
+  <script type="module" src="/src/dashboard.js"></script>
+</body>
+</html>

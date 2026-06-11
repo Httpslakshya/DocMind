@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="DocMind is processing your PDF." />
+  <title>DocMind | Processing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { ink:'#1c1b1b', paper:'#fcf9f8', card:'#fff', yellow:'#ffd60a', yellowSoft:'#ffe171', purple:'#645efb', muted:'#4d4632', danger:'#ba1a1a', dangerSoft:'#ffdad6', soft:'#f0edec' },
+          fontFamily: { display:['Space Grotesk','sans-serif'], body:['Space Grotesk','sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Space Grotesk', sans-serif; }
+    .shadow-brutal { box-shadow: 12px 12px 0 #1c1b1b; }
+    .shadow-sm-brutal { box-shadow: 4px 4px 0 #1c1b1b; }
+    .grid-bg { background-image: radial-gradient(#1c1b1b 1.5px, transparent 1.5px); background-size: 28px 28px; }
+    @keyframes enter { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulseBox { 0%, 100% { transform: translate(-2px, -2px); } 50% { transform: translate(2px, 2px); } }
+    .enter { animation: enter .35s ease both; }
+    .pulse-box { animation: pulseBox 1.2s ease-in-out infinite; }
+  </style>
+</head>
+<body class="min-h-screen bg-yellow text-ink overflow-hidden selection:bg-purple selection:text-white">
+  <div class="fixed inset-0 grid-bg opacity-20"></div>
+  <main class="relative z-10 min-h-screen flex items-center justify-center p-4 sm:p-8">
+    <section class="enter w-full max-w-2xl bg-card border-4 border-ink shadow-brutal p-5 sm:p-8">
+      <div class="flex items-start justify-between gap-4 border-b-4 border-ink pb-5">
+        <div class="flex items-center gap-4">
+          <div class="pulse-box h-16 w-16 rounded-full border-4 border-ink bg-yellow grid place-items-center shadow-sm-brutal">
+            <span id="main-icon" class="material-symbols-outlined text-4xl">hourglass_top</span>
+          </div>
+          <div>
+            <p class="text-xs font-black uppercase tracking-[.18em] text-muted">DocMind pipeline</p>
+            <h1 id="status-title" class="text-3xl sm:text-4xl font-black leading-tight">Preparing upload...</h1>
+          </div>
+        </div>
+        <button id="cancel-btn" class="border-4 border-ink bg-card px-3 py-2 font-black hover:bg-dangerSoft transition">Cancel</button>
+      </div>
+
+      <div class="mt-6">
+        <div class="h-12 border-4 border-ink bg-soft relative overflow-hidden">
+          <div class="absolute inset-0 opacity-20" style="repeating-linear-gradient(45deg, transparent, transparent 10px, #1c1b1b 10px, #1c1b1b 20px);"></div>
+          <div id="progress-fill" class="relative h-full w-[4%] bg-purple border-r-4 border-ink transition-all duration-500"></div>
+          <span id="progress-label" class="absolute inset-0 grid place-items-center font-black text-sm">0%</span>
+        </div>
+      </div>
+
+      <ol id="steps" class="mt-6 grid gap-3">
+        <li data-step="upload" class="step border-4 border-ink bg-yellow p-4 font-black flex items-center gap-3"><span class="material-symbols-outlined">cloud_upload</span>Uploading PDF...</li>
+        <li data-step="chunk" class="step border-4 border-ink bg-soft p-4 font-black flex items-center gap-3"><span class="material-symbols-outlined">splitscreen</span>Chunking Document...</li>
+        <li data-step="embedding" class="step border-4 border-ink bg-soft p-4 font-black flex items-center gap-3"><span class="material-symbols-outlined">hub</span>Creating Embeddings...</li>
+        <li data-step="indexing" class="step border-4 border-ink bg-soft p-4 font-black flex items-center gap-3"><span class="material-symbols-outlined">database</span>Indexing into Vector Database...</li>
+        <li data-step="ready" class="step border-4 border-ink bg-soft p-4 font-black flex items-center gap-3"><span class="material-symbols-outlined">check_circle</span>Ready to Chat</li>
+      </ol>
+
+      <div id="error-box" class="hidden mt-6 border-4 border-ink bg-dangerSoft p-4 font-bold text-danger"></div>
+      <p id="file-note" class="mt-5 text-sm font-bold text-muted"></p>
+    </section>
+  </main>
+
+  <script type="module" src="/src/processing.js"></script>
+</body>
+</html>

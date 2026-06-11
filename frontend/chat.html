@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="DocMind chat workspace with cited PDF answers." />
+  <title>DocMind | Chat</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,line-clamp"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { ink:'#1c1b1b', paper:'#fcf9f8', card:'#fff', yellow:'#ffd60a', yellowSoft:'#ffe171', purple:'#645efb', purpleDark:'#4b41e1', muted:'#4d4632', danger:'#ba1a1a', dangerSoft:'#ffdad6', soft:'#f0edec' },
+          fontFamily: { display:['Space Grotesk','sans-serif'], body:['Space Grotesk','sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Space Grotesk', sans-serif; }
+    ::-webkit-scrollbar { width: 12px; height: 12px; }
+    ::-webkit-scrollbar-track { background: #fcf9f8; border-left: 4px solid #1c1b1b; }
+    ::-webkit-scrollbar-thumb { background: #ffd60a; border: 3px solid #1c1b1b; }
+    .shadow-brutal { box-shadow: 8px 8px 0 #1c1b1b; }
+    .shadow-sm-brutal { box-shadow: 4px 4px 0 #1c1b1b; }
+    .press { transition: transform .16s ease, box-shadow .16s ease, background .16s ease; }
+    .press:hover { transform: translate(-3px, -3px); box-shadow: 11px 11px 0 #1c1b1b; }
+    .press:active { transform: translate(4px, 4px); box-shadow: 3px 3px 0 #1c1b1b; }
+    .dot-bg { background-image: radial-gradient(#1c1b1b 1px, transparent 1px); background-size: 22px 22px; }
+    .message-in { animation: messageIn .24s ease both; }
+    @keyframes messageIn { from { opacity: 0; transform: translateY(10px) scale(.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    .pdf-highlight { outline: 8px solid #ffd60a; outline-offset: -8px; }
+  </style>
+</head>
+<body class="h-screen overflow-hidden bg-paper text-ink selection:bg-yellow selection:text-ink">
+  <div class="h-screen lg:grid lg:grid-cols-[280px_minmax(360px,48vw)_1fr]">
+    <aside id="sidebar" class="fixed lg:relative inset-y-0 left-0 z-50 w-[280px] -translate-x-full lg:translate-x-0 transition-transform bg-card border-r-4 border-ink p-4 flex flex-col gap-5">
+      <div class="flex items-center gap-3 border-b-4 border-ink pb-4">
+        <div class="h-14 w-14 rounded-full border-4 border-ink bg-yellow overflow-hidden shadow-sm-brutal shrink-0"><img src="/static/docmind-logo.png" alt="DocMind logo" class="h-full w-full object-cover" /></div>
+        <div>
+          <h1 class="text-3xl font-black leading-none">DocMind</h1>
+          <p class="text-xs font-bold text-muted">Ask with sources</p>
+        </div>
+      </div>
+      <nav class="space-y-3">
+        <a href="/dashboard" class="flex items-center gap-3 border-4 border-transparent hover:border-ink hover:bg-soft p-3 font-black"><span class="material-symbols-outlined">library_books</span>Library</a>
+        <a id="details-link" href="/dashboard" class="flex items-center gap-3 border-4 border-transparent hover:border-ink hover:bg-soft p-3 font-black"><span class="material-symbols-outlined">info</span>Document Details</a>
+        <button id="new-chat-btn" class="w-full flex items-center gap-3 bg-yellow border-4 border-ink shadow-sm-brutal p-3 font-black text-left"><span class="material-symbols-outlined">add_box</span>New Chat</button>
+      </nav>
+      <div class="border-t-4 border-ink pt-4 flex-1 overflow-y-auto">
+        <p class="text-xs font-black uppercase tracking-[.18em] text-muted mb-3">Recent documents</p>
+        <ul id="recent-list" class="grid gap-2"></ul>
+      </div>
+      <div class="border-t-4 border-ink pt-4 grid gap-3">
+        <button id="settings-btn" class="border-4 border-transparent hover:border-ink hover:bg-soft p-3 font-black text-left flex items-center gap-3"><span class="material-symbols-outlined">settings</span>Settings</button>
+        <button id="logout-btn" class="border-4 border-transparent hover:border-ink hover:bg-dangerSoft p-3 font-black text-left flex items-center gap-3"><span class="material-symbols-outlined">logout</span>Logout</button>
+      </div>
+    </aside>
+
+    <section id="pdf-pane" class="hidden lg:flex h-screen flex-col bg-soft border-r-4 border-ink">
+      <div class="bg-card border-b-4 border-ink p-3">
+        <div class="flex items-center justify-between gap-3">
+          <p id="pdf-title" class="font-black truncate">Loading PDF...</p>
+          <span id="page-status" class="border-4 border-ink bg-yellow px-2 py-1 text-xs font-black whitespace-nowrap">Page 1</span>
+        </div>
+        <div class="mt-3 grid grid-cols-[auto_auto_1fr_auto_auto] gap-2 items-center">
+          <button class="control-btn" id="prev-page" title="Previous page"><span class="material-symbols-outlined">chevron_left</span></button>
+          <button class="control-btn" id="next-page" title="Next page"><span class="material-symbols-outlined">chevron_right</span></button>
+          <label class="flex items-center gap-2 border-4 border-ink bg-paper px-2 py-1 font-black text-sm">Jump <input id="page-input" type="number" min="1" value="1" class="w-full min-w-0 border-0 bg-transparent p-1 font-black focus:ring-0" /></label>
+          <button class="control-btn" id="zoom-out" title="Zoom out"><span class="material-symbols-outlined">zoom_out</span></button>
+          <button class="control-btn" id="zoom-in" title="Zoom in"><span class="material-symbols-outlined">zoom_in</span></button>
+        </div>
+        <div class="mt-2 grid grid-cols-2 gap-2">
+          <button id="fit-width" class="border-4 border-ink bg-card px-3 py-2 font-black hover:bg-yellow transition">Fit Width</button>
+          <button id="fit-page" class="border-4 border-ink bg-card px-3 py-2 font-black hover:bg-yellow transition">Fit Page</button>
+        </div>
+      </div>
+      <div id="pdf-shell" class="relative flex-1 overflow-auto p-3 dot-bg">
+        <div id="source-banner" class="hidden absolute top-5 left-1/2 -translate-x-1/2 z-10 border-4 border-ink bg-yellow shadow-brutal px-4 py-2 font-black">Highlighted Page 1</div>
+        <iframe id="pdf-frame" title="PDF viewer" class="h-full w-full bg-card border-4 border-ink transition-transform origin-top shadow-brutal"></iframe>
+      </div>
+    </section>
+
+    <main id="chat-pane" class="h-screen flex flex-col bg-paper">
+      <header class="bg-card border-b-4 border-ink p-3 sm:p-4">
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <button id="menu-btn" class="lg:hidden border-4 border-ink bg-yellow h-11 w-11 grid place-items-center shadow-sm-brutal"><span class="material-symbols-outlined">menu</span></button>
+            <div class="min-w-0">
+              <p class="text-xs font-black uppercase tracking-[.16em] text-muted">Chatting with</p>
+              <h2 id="current-doc-title" class="text-xl sm:text-2xl font-black truncate">Document</h2>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button id="mobile-pdf-tab" class="lg:hidden border-4 border-ink bg-yellow px-3 py-2 font-black">PDF</button>
+            <a href="/dashboard" class="hidden sm:inline-flex border-4 border-ink bg-card px-3 py-2 font-black hover:bg-yellow">Library</a>
+          </div>
+        </div>
+      </header>
+
+      <div id="chat-history" class="flex-1 overflow-y-auto dot-bg p-4 sm:p-6 grid content-start gap-5"></div>
+
+      <div id="ai-loading" class="hidden border-t-4 border-ink bg-card p-4">
+        <div class="max-w-4xl mx-auto flex items-center gap-3 font-black">
+          <span class="material-symbols-outlined animate-spin">autorenew</span>
+          DocMind is reading the cited chunks...
+        </div>
+      </div>
+
+      <footer class="border-t-4 border-ink bg-card p-3 sm:p-4">
+        <div class="max-w-5xl mx-auto grid gap-3">
+          <div id="suggestions" class="flex gap-2 overflow-x-auto pb-1"></div>
+          <div class="grid grid-cols-[1fr_auto_auto] gap-2 items-end">
+            <div class="border-4 border-ink bg-paper shadow-brutal p-3 focus-within:bg-yellowSoft transition">
+              <textarea id="chat-input" rows="1" placeholder="Ask anything about this document..." class="w-full resize-none border-0 bg-transparent p-0 text-base sm:text-lg font-semibold focus:ring-0 max-h-40"></textarea>
+            </div>
+            <button id="mic-btn" class="press shadow-brutal h-[58px] w-[58px] border-4 border-ink bg-purple text-white grid place-items-center" title="Voice input"><span class="material-symbols-outlined text-3xl">mic</span></button>
+            <button id="send-btn" class="press shadow-brutal h-[58px] w-[58px] border-4 border-ink bg-yellow grid place-items-center" title="Send"><span class="material-symbols-outlined text-3xl">arrow_upward</span></button>
+          </div>
+          <p class="text-center text-xs font-bold text-muted">Enter sends. Shift + Enter adds a new line.</p>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <div id="modal" class="hidden fixed inset-0 z-[70] bg-ink/55 p-4 items-center justify-center">
+    <div class="bg-card border-4 border-ink shadow-brutal max-w-md w-full p-6">
+      <div class="flex justify-between gap-4 border-b-4 border-ink pb-3 mb-4">
+        <h3 class="text-2xl font-black">Chat Settings</h3>
+        <button id="modal-close" class="font-black text-2xl leading-none">&times;</button>
+      </div>
+      <div class="space-y-3 font-semibold text-muted">
+        <label class="flex items-center justify-between border-4 border-ink bg-soft p-3"><span>Show source citations</span><input type="checkbox" checked disabled></label>
+        <label class="flex items-center justify-between border-4 border-ink bg-soft p-3"><span>Auto-open citation pages</span><input type="checkbox" checked disabled></label>
+        <p>DocMind keeps citations visible by default so every answer can be checked against the PDF.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="hidden fixed bottom-5 right-5 z-[80] max-w-sm bg-card border-4 border-ink shadow-brutal p-4 font-black"></div>
+
+  <script type="module" src="/src/chat.js"></script>
+</body>
+</html>
