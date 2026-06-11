@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: docmind-backend
+    env: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: STORAGE_BACKEND
+        value: local
+      - key: FRONTEND_URL
+        sync: false # Set this in Render Dashboard to your Vercel URL
+      - key: QDRANT_URL
+        sync: false # Set this in Render Dashboard
+      - key: QDRANT_API_KEY
+        sync: false # Set this in Render Dashboard
+      - key: GROQ_API_KEY
+        sync: false # Set this in Render Dashboard
+      - key: GEMINI_API_KEY
+        sync: false # Set this in Render Dashboard

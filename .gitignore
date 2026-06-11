@@ -6,6 +6,10 @@ __pycache__/
 data/
 qdrant_db/
 logs/
+backend/data/
+backend/logs/
+frontend/node_modules/
+frontend/dist/
 
 *.pdf
 *.pyc
