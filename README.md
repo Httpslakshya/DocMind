@@ -1,152 +1,213 @@
-# DocMind: AI-Powered PDF Chat Application
+# 🧠 DocMind
 
-DocMind is a Neubrutalist cited PDF chat application that lets users upload documents, automatically chunks and indexes them, and utilizes RAG (Retrieval-Augmented Generation) to answer questions with clickable page-level source highlights.
+> Chat with PDFs, generate summaries, notes, quizzes, and retrieve context-aware answers using AI.
 
-This repository separates the codebase into a decoupled Full-Stack architecture suitable for production deployment:
-* **Frontend**: HTML5/CSS3/JavaScript Multi-Page Application powered by **Vite** (Deploys to **Vercel**).
-* **Backend**: **FastAPI** Python service with modular routers and abstract storage providers (Deploys to **Render**).
+![Python](https://img.shields.io/badge/Python-FastAPI-blue)
+![React](https://img.shields.io/badge/React-Vite-61DAFB)
+![Qdrant](https://img.shields.io/badge/VectorDB-Qdrant-red)
+![Supabase](https://img.shields.io/badge/Storage-Supabase-green)
+![Gemini](https://img.shields.io/badge/AI-Google_Gemini-orange)
 
 ---
 
-## Workspace Layout
+## 🚀 Overview
+
+DocMind is an AI-powered document intelligence platform that transforms static PDFs into interactive knowledge sources.
+
+Users can upload PDF documents and:
+
+* 💬 Chat with PDFs using natural language
+* 📝 Generate summaries
+* 📚 Create study notes
+* ❓ Generate quizzes
+* 🔍 Perform semantic search
+* 📖 Get citation-backed answers
+* ☁️ Store and manage documents in the cloud
+
+---
+
+## ✨ Features
+
+* PDF Upload & Management
+* AI Chat with Documents
+* Citation-Based Responses
+* Semantic Search
+* Automatic Summarization
+* Quiz Generation
+* Notes Generation
+* Cloud Storage Integration
+* Background Document Indexing
+* Real-Time Indexing Progress Tracking
+* Vector Search using Qdrant Cloud
+
+---
+
+## 🏗️ Architecture
+
+```text
+Frontend (Vercel)
+        │
+        ▼
+React + Vite
+        │
+        ▼
+FastAPI Backend (Render)
+        │
+ ┌──────┼─────────┐
+ ▼      ▼         ▼
+Supabase   Qdrant   Gemini
+Storage    Cloud    Embeddings
+```
+
+---
+
+## 🛠️ Tech Stack
+
+### Frontend
+
+* React
+* Vite
+* JavaScript
+
+### Backend
+
+* Python
+* FastAPI
+* Uvicorn
+
+### AI & RAG
+
+* Google Gemini Embeddings
+* LangChain
+* Qdrant Cloud
+
+### Storage
+
+* Supabase Storage
+* Supabase Database
+
+### Deployment
+
+* Vercel
+* Render
+
+---
+
+## 📂 Project Structure
 
 ```text
 DocMind/
-├── frontend/                  # Decoupled Static Frontend
-│   ├── public/                # Static assets (logos, images)
-│   ├── src/                   # Modular JavaScript modules
-│   │   ├── api.js             # Global HTTP Fetch Wrapper
-│   │   ├── login.js           # Auth validations and handlers
-│   │   ├── dashboard.js       # File catalogs and uploads UI
-│   │   ├── processing.js      # Upload stream progress tracking
-│   │   ├── chat.js            # Chat view & cited page highlight logic
-│   │   └── document.js        # Detailed metadata readout UI
-│   ├── index.html             # Login Entry point (renamed from login.html)
-│   ├── dashboard.html         # User document library
-│   ├── processing.html        # Loading & vectorizing page
-│   ├── chat.html              # Multi-pane conversation workspace
-│   ├── document.html          # Detailed document readout
-│   ├── package.json           # Vite builder dependencies
-│   ├── vite.config.js         # Rollup MPA config
-│   └── vercel.json            # Vercel rewrites rules
 │
-├── backend/                   # Decoupled FastAPI Server
-│   ├── api/                   # Router endpoints
-│   │   ├── auth.py            # Login, logout, session check
-│   │   ├── chat.py            # RAG conversation logic
-│   │   └── documents.py       # Catalog query, upload, delete
-│   ├── config/
-│   │   └── settings.py        # Environmental configuration loader
-│   ├── middleware/
-│   │   └── security.py        # Dynamic CORS configuration
-│   ├── models/
-│   │   └── schemas.py         # Standardized Pydantic models & responses
+├── frontend/
+│   ├── src/
+│   ├── public/
+│   └── vite.config.js
+│
+├── backend/
+│   ├── api/
 │   ├── services/
-│   │   └── rag.py             # Embeddings, chunking, LLM routers
-│   ├── storage/               # Abstract Storage Layer
-│   │   ├── base.py            # Storage Abstract Base Class
-│   │   ├── local.py           # Disk storage driver
-│   │   └── service.py         # Provider selector singleton
-│   ├── utils/
-│   │   ├── helpers.py         # Size formatting, filename sanitization
-│   │   └── logging_config.py  # Production rotating file logger
+│   ├── storage/
 │   ├── vectorstore/
-│   │   └── qdrant.py          # Qdrant client connection pool
-│   ├── logs/                  # Application runtime log files
-│   ├── render.yaml            # Render infrastructure blueprint
-│   ├── requirements.txt       # Backend Python packages
-│   ├── test_api.py            # In-memory integration test suite
-│   └── main.py                # Server entryway
+│   ├── models/
+│   └── main.py
 │
-├── .env.example               # Root configuration env template
-└── README.md                  # System manual and deployment guide
+├── data/
+├── logs/
+└── README.md
 ```
 
 ---
 
-## Environment Configuration
+## 🔄 Document Processing Flow
 
-### Frontend Settings (`frontend/.env`)
-Create `frontend/.env` pointing to the backend API endpoint:
-```env
-VITE_API_URL=http://localhost:8000
-```
-
-### Backend Settings (`.env` in the root)
-Create `.env` containing keys for services:
-```env
-ENVIRONMENT=development
-FRONTEND_URL=http://localhost:5173
-
-QDRANT_URL=https://your-qdrant-cluster.aws.cloud.qdrant.io
-QDRANT_API_KEY=your-api-key
-
-GROQ_API_KEY=your-groq-key
-GEMINI_API_KEY=your-gemini-fallback-key
-
-STORAGE_BACKEND=local
+```text
+Upload PDF
+     │
+     ▼
+Supabase Storage
+     │
+     ▼
+PDF Parsing (PyPDFLoader)
+     │
+     ▼
+Chunk Generation
+     │
+     ▼
+Gemini Embeddings
+     │
+     ▼
+Qdrant Vector Indexing
+     │
+     ▼
+Ready for AI Chat
 ```
 
 ---
 
-## Local Development Setup
+## 🔐 Security
 
-### 1. Run the Backend API
-From the repository root:
-```bash
-# Create a virtual environment and activate it
-python -m venv .venv
-# On Windows:
-.venv\Scripts\activate
-
-# Install requirements
-pip install -r backend/requirements.txt
-
-# Run server (runs on port 8000)
-python backend/main.py
-```
-
-### 2. Run Frontend Dev Server
-From the `frontend` folder:
-```bash
-cd frontend
-npm install
-npm run dev
-```
-Open `http://localhost:5173` in your browser.
+* Session-based authentication
+* CORS protection
+* Environment variable configuration
+* Secure API key handling
+* Backend-only access to AI services
 
 ---
 
-## Deployment Playbooks
+## 🚨 Challenges Solved
 
-### Frontend Deployment: Vercel
-1. Install [Vercel CLI](https://vercel.com/cli) or hook your GitHub repo to the Vercel dashboard.
-2. Set the build parameters:
-   * **Framework Preset**: `Vite` (or `Other`)
-   * **Root Directory**: `frontend`
-   * **Build Command**: `npm run build`
-   * **Output Directory**: `dist`
-3. Configure Environment Variables:
-   * Add `VITE_API_URL` pointing to your deployed Render URL (e.g. `https://docmind-backend.onrender.com`).
-4. Click **Deploy**.
-
-### Backend Deployment: Render
-1. Render automatically reads the blueprint inside `backend/render.yaml`.
-2. Connect your GitHub repository to Render.
-3. Select **New** > **Blueprint** on your dashboard.
-4. Render will create the service named `docmind-backend` with:
-   * **Build Command**: `pip install -r backend/requirements.txt`
-   * **Start Command**: `uvicorn backend.main:app --host 0.0.0.0 --port $PORT`
-5. Render will prompt you to provide values for the missing environment variables (`QDRANT_URL`, `QDRANT_API_KEY`, `GROQ_API_KEY`, `GEMINI_API_KEY`, and `FRONTEND_URL` pointing to your Vercel domain).
-6. Deploy the service.
+| Problem                          | Solution                                            |
+| -------------------------------- | --------------------------------------------------- |
+| Memory crashes on deployment     | Migrated from local embedding models to Gemini API  |
+| Lost indexing jobs after restart | Persistent job tracking                             |
+| Vector dimension mismatch        | Recreated Qdrant collection with correct dimensions |
+| Cross-origin deployment issues   | Production-ready CORS configuration                 |
 
 ---
 
-## Security Features Included
+## 📈 Future Roadmap
 
-* **Sanitized Filenames**: Strip path traversal indicators (`../`) and non-alphanumeric characters.
-* **MIME Verification**: Validate content headers ensuring only real `application/pdf` streams are processed.
-* **File Sizing Enforcements**: Configurable file bounds checking rejecting uploads exceeding 15MB.
-* **CORS Limits**: Allowed origins restricted in production.
-* **Abstract Storage Interface**: Business logic decoupled from disk interactions, facilitating S3/Supabase swaps.
-* **Structured Logs**: Multi-handler logging rotating up to 10MB to maintain clean, searchable operations.
+* Multi-user accounts
+* OCR support for scanned PDFs
+* Voice-based PDF interaction
+* Flashcard generation
+* PDF citation highlighting
+* Collaborative workspaces
+* Mobile application
+
+---
+
+## 🌐 Deployment
+
+### Frontend
+
+Vercel
+
+### Backend
+
+Render
+
+### Storage
+
+Supabase
+
+### Vector Database
+
+Qdrant Cloud
+
+### AI Model
+
+Google Gemini
+
+---
+
+## 👨‍💻 Author
+
+**Lakshya Dharkar**
+
+B.Tech Computer Science Student
+AI/ML Enthusiast • Full Stack Developer • Building AI-powered products
+
+---
+
+⭐ If you found this project interesting, consider giving it a star.
