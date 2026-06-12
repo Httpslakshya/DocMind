@@ -1,6 +1,5 @@
 import json
 import os
-import shutil
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -14,8 +13,49 @@ from backend.utils.logging_config import logger
 
 router = APIRouter(tags=["Documents"])
 
-# In-memory background job tracking registry
-indexing_jobs = {}
+# ---------------------------------------------------------------------------
+# Supabase job status helpers (restart-proof — no more in-memory dict)
+# ---------------------------------------------------------------------------
+
+def _get_supabase():
+    """Returns a Supabase client instance."""
+    from supabase import create_client
+    return create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+
+def _job_create(job_id: str, filename: str):
+    """Inserts a new indexing job record into Supabase."""
+    try:
+        _get_supabase().table("indexing_jobs").insert({
+            "job_id": job_id,
+            "filename": filename,
+            "status": "queued",
+            "progress": 0,
+            "pages": 0,
+            "error": None
+        }).execute()
+    except Exception as e:
+        logger.warning(f"Could not persist job {job_id} to Supabase: {e}")
+
+def _job_update(job_id: str, **kwargs):
+    """Updates fields on an existing indexing job record in Supabase."""
+    try:
+        _get_supabase().table("indexing_jobs").update(kwargs).eq("job_id", job_id).execute()
+    except Exception as e:
+        logger.warning(f"Could not update job {job_id} in Supabase: {e}")
+
+def _job_get(job_id: str):
+    """Fetches a single indexing job record from Supabase. Returns dict or None."""
+    try:
+        result = _get_supabase().table("indexing_jobs").select("*").eq("job_id", job_id).execute()
+        if result.data:
+            return result.data[0]
+    except Exception as e:
+        logger.warning(f"Could not fetch job {job_id} from Supabase: {e}")
+    return None
+
+# ---------------------------------------------------------------------------
+# Local JSON document catalog helpers
+# ---------------------------------------------------------------------------
 
 def load_documents_db():
     """Reads document metadata tracking list from local json database."""
@@ -38,46 +78,45 @@ def save_documents_db(db):
     except Exception as e:
         logger.error(f"Failed to write documents DB: {e}")
 
+# ---------------------------------------------------------------------------
+# Background indexing worker
+# ---------------------------------------------------------------------------
+
 async def bg_index_document(job_id: str, filename: str, file_path: str):
     """Background task to load, chunk, embed, and index a PDF document."""
     logger.info(f"Background indexing worker started for job {job_id} ({filename})")
     try:
         # Step 1: Ingestion
-        indexing_jobs[job_id]["status"] = "processing"
-        indexing_jobs[job_id]["progress"] = 15
-        
-        # Load PDF
+        _job_update(job_id, status="processing", progress=15)
+
         from langchain_community.document_loaders import PyPDFLoader
         loader = PyPDFLoader(file_path)
         docs = loader.load()
         page_count = len(docs)
-        logger.info(f"Loaded {page_count} pages in background for job {job_id}.")
-        
+        logger.info(f"Loaded {page_count} pages for job {job_id}.")
+
         # Step 2: Chunking
-        indexing_jobs[job_id]["progress"] = 45
+        _job_update(job_id, progress=45)
         from langchain_text_splitters import RecursiveCharacterTextSplitter
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=400)
         chunks = text_splitter.split_documents(docs)
-        
+
         for chunk in chunks:
             chunk.metadata["source"] = filename
-            if "page" in chunk.metadata:
-                chunk.metadata["page_label"] = str(chunk.metadata["page"] + 1)
-            else:
-                chunk.metadata["page_label"] = "1"
-                
-        # Step 3: Embeddings generation and Vector database indexing
-        indexing_jobs[job_id]["progress"] = 70
+            chunk.metadata["page_label"] = str(chunk.metadata.get("page", 0) + 1)
+
+        # Step 3: Embed + index into Qdrant
+        _job_update(job_id, progress=70)
         from backend.vectorstore.qdrant import get_vector_db
         vector_db = get_vector_db()
         vector_db.add_documents(chunks)
-        
-        # Step 4: Metadata Catalog save
-        indexing_jobs[job_id]["progress"] = 90
+
+        # Step 4: Persist metadata catalog
+        _job_update(job_id, progress=90)
         db = load_documents_db()
         file_size_formatted = format_size(os.path.getsize(file_path))
         storage_url = storage_service.get_file_url(filename)
-        
+
         exists = False
         for doc in db:
             if doc["filename"] == filename:
@@ -89,7 +128,7 @@ async def bg_index_document(job_id: str, filename: str, file_path: str):
                 doc["storage_url"] = storage_url
                 exists = True
                 break
-                
+
         if not exists:
             db.append({
                 "filename": filename,
@@ -103,24 +142,23 @@ async def bg_index_document(job_id: str, filename: str, file_path: str):
                 "summary": "Ready for analysis. Ask DocMind to summarize, quiz, or extract the core concepts."
             })
         save_documents_db(db)
-        
-        # Step 5: Completed
-        indexing_jobs[job_id]["progress"] = 100
-        indexing_jobs[job_id]["status"] = "completed"
-        indexing_jobs[job_id]["pages"] = page_count
-        logger.info(f"Background indexing worker finished successfully for job {job_id} ({filename})")
-        
+
+        # Step 5: Mark completed
+        _job_update(job_id, status="completed", progress=100, pages=page_count)
+        logger.info(f"Indexing completed for job {job_id} ({filename})")
+
     except Exception as e:
-        logger.error(f"Background indexing task failed for job {job_id} ({filename}): {e}", exc_info=True)
-        indexing_jobs[job_id]["status"] = "failed"
-        indexing_jobs[job_id]["progress"] = 0
-        indexing_jobs[job_id]["error"] = str(e)
-        
-        # Clean up storage if indexing failed
+        logger.error(f"Background indexing failed for job {job_id} ({filename}): {e}", exc_info=True)
+        _job_update(job_id, status="failed", progress=0, error=str(e))
+
         try:
             storage_service.delete_file(filename)
         except Exception as cleanup_err:
-            logger.warning(f"Failed to delete file {filename} after indexing failure: {cleanup_err}")
+            logger.warning(f"Cleanup failed for {filename}: {cleanup_err}")
+
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
 
 @router.get("/api/documents")
 def get_documents():
@@ -128,17 +166,17 @@ def get_documents():
     db = load_documents_db()
     synced_db = []
     changed = False
-    
+
     for doc in db:
         if storage_service.exists(doc["filename"]):
             synced_db.append(doc)
         else:
             changed = True
             logger.info(f"Removing reference for physically missing file: {doc['filename']}")
-            
+
     if changed:
         save_documents_db(synced_db)
-        
+
     return success_response(
         data={"documents": synced_db},
         message="Documents retrieved successfully"
@@ -149,15 +187,15 @@ def get_document_meta(filename: str):
     """Retrieves metadata properties for a given file name."""
     sanitized = sanitize_filename(filename)
     db = load_documents_db()
-    
+
     for doc in db:
         if doc["filename"] == sanitized:
             if not storage_service.exists(sanitized):
                 return error_response(message="Document not found on storage backend", status_code=404)
-                
+
             file_path = storage_service.get_file_path(sanitized)
             file_size_formatted = doc.get("size", format_size(os.path.getsize(file_path)))
-            
+
             return success_response(
                 data={
                     "filename": doc["filename"],
@@ -175,7 +213,7 @@ def get_document_meta(filename: str):
                 },
                 message="Metadata retrieved successfully"
             )
-            
+
     return error_response(message="Document metadata reference not found", status_code=404)
 
 @router.get("/api/document/{filename}")
@@ -184,27 +222,24 @@ def serve_document(filename: str):
     sanitized = sanitize_filename(filename)
     if not storage_service.exists(sanitized):
         return error_response(message="Document not found", status_code=404)
-        
+
     file_path = storage_service.get_file_path(sanitized)
     return FileResponse(file_path, media_type="application/pdf")
 
 @router.delete("/api/document/{filename}")
 def delete_document(filename: str):
-    """Deletes document physically from disk, removes tracking metadata, and deletes Qdrant points."""
+    """Deletes document from storage, metadata catalog, and Qdrant vectors."""
     sanitized = sanitize_filename(filename)
-    
-    # Delete from storage
+
     storage_service.delete_file(sanitized)
-    
-    # Delete metadata tracking
+
     db = load_documents_db()
     new_db = [doc for doc in db if doc["filename"] != sanitized]
     save_documents_db(new_db)
-    
-    # Delete vectors
+
     from backend.services.rag import delete_document_vectors
     delete_document_vectors(sanitized)
-    
+
     logger.info(f"Completed deletion tasks for {sanitized}.")
     return success_response(message=f"Document {sanitized} deleted successfully")
 
@@ -213,35 +248,25 @@ def get_document_status(filename: str, background_tasks: BackgroundTasks):
     """Polls/Checks if document requires RAG indexing and triggers it if pending."""
     sanitized = sanitize_filename(filename)
     db = load_documents_db()
-    
+
     for doc in db:
         if doc["filename"] == sanitized:
             if doc.get("pages", 0) == 0:
                 try:
                     if not storage_service.exists(sanitized):
                         return error_response(message="Seeded file reference lost on storage", status_code=404)
-                        
+
                     file_path = storage_service.get_file_path(sanitized)
-                    
-                    # Generate a background job for auto-indexing the seeded file
                     job_id = f"auto-{str(uuid.uuid4())[:8]}"
-                    indexing_jobs[job_id] = {
-                        "job_id": job_id,
-                        "filename": sanitized,
-                        "status": "queued",
-                        "progress": 0,
-                        "pages": 0,
-                        "error": None
-                    }
-                    
+                    _job_create(job_id, sanitized)
                     background_tasks.add_task(bg_index_document, job_id, sanitized, file_path)
-                    
+
                     return success_response(
                         data={"status": "processing", "job_id": job_id},
                         message="Indexing triggered in background"
                     )
                 except Exception as e:
-                    logger.error(f"Auto-indexing background dispatch failed for {sanitized}: {e}")
+                    logger.error(f"Auto-indexing dispatch failed for {sanitized}: {e}")
                     return success_response(
                         data={"status": "error", "detail": str(e)},
                         message="Indexing dispatch failed"
@@ -251,7 +276,7 @@ def get_document_status(filename: str, background_tasks: BackgroundTasks):
                     data={"status": "indexed", "pages": doc["pages"]},
                     message="Document is indexed"
                 )
-                
+
     return success_response(
         data={"status": "not_found"},
         message="Document status query finished: record not found"
@@ -259,32 +284,20 @@ def get_document_status(filename: str, background_tasks: BackgroundTasks):
 
 @router.post("/api/upload")
 def upload_document(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
-    """Receives PDF, saves to storage, and queues RAG indexing immediately in the background."""
+    """Receives PDF, saves to storage, and queues RAG indexing in background."""
     sanitized = sanitize_filename(file.filename)
     logger.info(f"File upload request received for background indexing: {file.filename}")
-    
-    # Validate MIME type and size limits
-    size_bytes = validate_uploaded_file(file)
-    
-    # Save file immediately using abstract service
+
+    validate_uploaded_file(file)
+
     file_path = storage_service.save_file(sanitized, file.file)
-    
-    # Generate background job metadata
+
     job_id = str(uuid.uuid4())
-    indexing_jobs[job_id] = {
-        "job_id": job_id,
-        "filename": sanitized,
-        "status": "queued",
-        "progress": 0,
-        "pages": 0,
-        "error": None
-    }
-    
-    # Queue RAG index task
+    _job_create(job_id, sanitized)
     background_tasks.add_task(bg_index_document, job_id, sanitized, file_path)
-    
+
     logger.info(f"Queued background indexing job {job_id} for file '{sanitized}'.")
-    
+
     return success_response(
         data={
             "job_id": job_id,
@@ -296,12 +309,13 @@ def upload_document(background_tasks: BackgroundTasks, file: UploadFile = File(.
 
 @router.get("/api/upload/status/{job_id}")
 def get_upload_status(job_id: str):
-    """Retrieves status and progress percentage for a background indexing job."""
-    if job_id not in indexing_jobs:
+    """Retrieves status and progress for a background indexing job from Supabase."""
+    job = _job_get(job_id)
+    if not job:
         return error_response(message="Background indexing job not found", status_code=404)
-        
+
     return success_response(
-        data=indexing_jobs[job_id],
+        data=job,
         message="Background job status retrieved successfully"
     )
 
@@ -311,34 +325,32 @@ def seed_documents():
         logger.info("Skipping startup document seeding for non-local storage provider.")
         return
 
-    # Source seed directory
     rag_dir = Path(r"d:\Codes\anaconda\Agentic_Ai\RAG")
     if not rag_dir.exists():
         logger.info("Seed directory 'Agentic_Ai/RAG' does not exist. Skipping seeding.")
         return
-        
+
     db = load_documents_db()
     if len(db) > 0:
         return
-        
+
     seeded = False
     for item in os.listdir(rag_dir):
         if item.endswith(".pdf"):
             src_path = rag_dir / item
             sanitized = sanitize_filename(item)
-            
+
             try:
-                # Save file via storage service
                 with open(src_path, "rb") as f:
                     storage_service.save_file(sanitized, f)
-                    
+
                 file_path = storage_service.get_file_path(sanitized)
                 file_size_formatted = format_size(os.path.getsize(file_path))
-                
+
                 db.append({
                     "filename": sanitized,
                     "size": file_size_formatted,
-                    "pages": 0,  # Lazy loaded on status query
+                    "pages": 0,
                     "date": datetime.now().strftime("%b %d, %Y"),
                     "chats": 0,
                     "indexed": False,
@@ -348,6 +360,6 @@ def seed_documents():
                 logger.info(f"Successfully seeded document: {sanitized}")
             except Exception as e:
                 logger.error(f"Failed to seed document {item}: {e}")
-                
+
     if seeded:
         save_documents_db(db)

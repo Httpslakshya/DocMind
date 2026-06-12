@@ -6,14 +6,16 @@ _vector_db = None
 _embeddings = None
 
 def get_embeddings():
-    """Initializes and caches the Hugging Face sentence embeddings model."""
+    """Initializes and caches Google Gemini text-embedding-004 model."""
     global _embeddings
     if _embeddings is None:
-        from langchain_huggingface import HuggingFaceEmbeddings
-        logger.info("Loading sentence-transformers/all-MiniLM-L6-v2 embedding model...")
-        _embeddings = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-MiniLM-L6-v2"
+        from langchain_google_genai import GoogleGenerativeAIEmbeddings
+        logger.info("Initializing Google Gemini gemini-embedding-001 model (768 dim)...")
+        _embeddings = GoogleGenerativeAIEmbeddings(
+            model="gemini-embedding-001",
+            google_api_key=settings.GEMINI_API_KEY
         )
+        logger.info("Google Gemini embeddings initialized successfully.")
     return _embeddings
 
 def get_qdrant_client():
@@ -24,7 +26,7 @@ def get_qdrant_client():
 
         qdrant_url = settings.QDRANT_URL
         qdrant_api_key = settings.QDRANT_API_KEY
-        
+
         # Connect to remote Qdrant Cloud if configuration exists
         if qdrant_url and "localhost" not in qdrant_url:
             logger.info(f"Connecting to remote Qdrant Cloud instance: {qdrant_url}")
@@ -35,10 +37,25 @@ def get_qdrant_client():
             )
         else:
             local_path = str(settings.QDRANT_LOCAL_PATH)
-            logger.info(f"Remote Qdrant details missing or pointing to localhost. Connecting to local Qdrant DB at {local_path}...")
+            logger.info(f"Connecting to local Qdrant DB at {local_path}...")
             _qdrant_client = QdrantClient(path=local_path)
-            
+
     return _qdrant_client
+
+def ensure_collection_exists():
+    """Creates 'chatpdf' collection with 768 dimensions if it doesn't exist."""
+    from qdrant_client.models import Distance, VectorParams
+    client = get_qdrant_client()
+    existing = [c.name for c in client.get_collections().collections]
+    if "chatpdf" not in existing:
+        logger.info("Collection 'chatpdf' not found. Creating with 768 dimensions (Gemini)...")
+        client.create_collection(
+            collection_name="chatpdf",
+            vectors_config=VectorParams(size=768, distance=Distance.COSINE)
+        )
+        logger.info("Collection 'chatpdf' created successfully.")
+    else:
+        logger.info("Collection 'chatpdf' already exists.")
 
 def get_vector_db():
     """Returns the LangChain QdrantVectorStore wrapper instance."""
@@ -46,6 +63,7 @@ def get_vector_db():
     if _vector_db is None:
         from langchain_qdrant import QdrantVectorStore
 
+        ensure_collection_exists()
         client = get_qdrant_client()
         embeddings = get_embeddings()
         logger.info("Initializing LangChain QdrantVectorStore wrapper (collection: 'chatpdf')...")
@@ -54,4 +72,5 @@ def get_vector_db():
             embedding=embeddings,
             collection_name="chatpdf"
         )
+        logger.info("QdrantVectorStore initialized successfully.")
     return _vector_db
