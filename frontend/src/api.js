@@ -1,8 +1,8 @@
+// api.js - Remove credentials: 'include', it's causing CORS to fail
+// You use localStorage/headers for session, NOT cookies, so this is not needed
+
 export const API_URL = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
 
-/**
- * Custom fetch wrapper to handle API requests and standardize errors.
- */
 export async function apiFetch(endpoint, options = {}) {
   const url = endpoint.startsWith('http') ? endpoint : `${API_URL}${endpoint}`;
   const sessionId = localStorage.getItem('session_id');
@@ -10,10 +10,10 @@ export async function apiFetch(endpoint, options = {}) {
     ...(sessionId ? { 'x-session-id': sessionId } : {}),
     ...options.headers
   };
-  
-  // Set credentials mode to send session cookies to Render backend
-  options.credentials = options.credentials || 'include';
-  
+
+  // ❌ REMOVED: options.credentials = 'include'
+  // This was forcing strict CORS rules even though you don't use cookies
+
   if (options.body && !(options.body instanceof FormData)) {
     options.headers = {
       'Content-Type': 'application/json',
@@ -24,8 +24,7 @@ export async function apiFetch(endpoint, options = {}) {
   }
 
   const response = await fetch(url, options);
-  
-  // If it's a binary file stream (not JSON), return response directly
+
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) {
     if (!response.ok) {
@@ -35,17 +34,14 @@ export async function apiFetch(endpoint, options = {}) {
   }
 
   const data = await response.json();
-  
+
   if (!response.ok || data.success === false) {
     throw new Error(data.message || data.detail || 'API request failed');
   }
-  
+
   return data;
 }
 
-/**
- * Helper to check local session status and redirect if necessary.
- */
 export function checkAuth() {
   const sessionId = localStorage.getItem('session_id');
   if (!sessionId) {

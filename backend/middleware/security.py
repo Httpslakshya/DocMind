@@ -29,9 +29,9 @@ def setup_cors(app: FastAPI):
     logger.info(f"Setting up CORS origins: {origins}")
     
     app.add_middleware(
-        CORSMiddleware,
-        allow_origins=origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=False,  # ← was True, causes strict CORS enforcement
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
